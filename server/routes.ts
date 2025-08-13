@@ -5,7 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { insertDocumentSchema, insertTopicSchema, insertQuestionSchema, insertYoutubeVideoSchema, insertPhetSimulationSchema } from "@shared/schema";
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 
 // Extend Request interface for multer
 interface MulterRequest extends Request {
@@ -30,9 +30,9 @@ const upload = multer({
 // API configurations
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU";
 
-// Initialize Gemini AI
-const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 // PhET simulations data - Complete collection
@@ -428,20 +428,20 @@ async function generateAIResponse(message: string, documentId?: string): Promise
       }
     }
 
-    const model = genAI.models.generateContent;
-    const prompt = `You are an educational AI assistant helping students understand their study materials. Be helpful, accurate, and encouraging. If provided with document context, reference it in your responses.${contextText ? `\n\nDocument context: ${contextText}` : ''}\n\nStudent question: ${message}`;
+    const systemMessage = `You are an educational AI assistant helping students understand their study materials. Be helpful, accurate, and encouraging. If provided with document context, reference it in your responses.${contextText ? `\n\nDocument context: ${contextText}` : ''}`;
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          parts: [{ text: prompt }],
-          role: "user"
-        }
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: message }
       ],
+      max_tokens: 500,
+      temperature: 0.7
     });
 
-    return response.text || "I'm sorry, I couldn't generate a response right now. Please try again.";
+    return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response right now. Please try again.";
   } catch (error) {
     console.error('AI chat error:', error);
     return "I'm having trouble connecting to my AI service right now. Please try again in a moment.";
@@ -558,49 +558,26 @@ async function extractTopicsWithAI(text: string, documentId: string) {
   const topics = [];
   
   try {
-    console.log('Analyzing document with Gemini AI...');
+    console.log('Analyzing document with OpenAI...');
     
     // Use more text for better analysis, limit for performance
     const analysisText = text.substring(0, 8000);
     
-    // Use Gemini to extract topics and create summaries
     const prompt = `You are an educational AI assistant. Analyze the provided text and extract 3-6 main topics. For each topic, provide a clear title and a 2-3 sentence summary. Format your response as JSON with this structure: {"topics": [{"title": "Topic Title", "summary": "Brief summary"}]}
 
 Please analyze this educational content and extract the main topics:
 
 ${analysisText}`;
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash", // Use flash model for faster processing
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            topics: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  summary: { type: "string" }
-                },
-                required: ["title", "summary"]
-              }
-            }
-          },
-          required: ["topics"]
-        },
-      },
-      contents: [
-        {
-          parts: [{ text: prompt }],
-          role: "user"
-        }
-      ],
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 1000
     });
 
-    const aiResponse = response.text;
+    const aiResponse = response.choices[0]?.message?.content;
     if (!aiResponse) {
       throw new Error('No response from AI');
     }
@@ -664,43 +641,15 @@ async function generateQuestionsWithAI(topicId: string, title: string, summary: 
 Topic: ${title}
 Summary: ${summary}`;
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            questions: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  type: { type: "string" },
-                  question: { type: "string" },
-                  options: { 
-                    type: "array",
-                    items: { type: "string" }
-                  },
-                  correctAnswer: { type: "string" },
-                  explanation: { type: "string" }
-                },
-                required: ["type", "question", "explanation"]
-              }
-            }
-          },
-          required: ["questions"]
-        },
-      },
-      contents: [
-        {
-          parts: [{ text: prompt }],
-          role: "user"
-        }
-      ],
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 800
     });
 
-    const aiResponse = response.text;
+    const aiResponse = response.choices[0]?.message?.content;
     if (aiResponse) {
       const parsedResponse = JSON.parse(aiResponse);
       const questions = parsedResponse.questions || [];
@@ -812,34 +761,15 @@ async function generateDailyChallengeWithAI() {
 
 Create an interesting and educational ${subject} question that tests understanding of key concepts.`;
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            question: { type: "string" },
-            options: { 
-              type: "array",
-              items: { type: "string" }
-            },
-            correctAnswer: { type: "string" },
-            explanation: { type: "string" },
-            difficulty: { type: "string" }
-          },
-          required: ["question", "options", "correctAnswer", "explanation"]
-        },
-      },
-      contents: [
-        {
-          parts: [{ text: prompt }],
-          role: "user"
-        }
-      ],
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 600
     });
 
-    const aiResponse = response.text;
+    const aiResponse = response.choices[0]?.message?.content;
     if (aiResponse) {
       const parsedResponse = JSON.parse(aiResponse);
       
