@@ -30,9 +30,10 @@ const upload = multer({
 // API configurations
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU";
 
-// Initialize OpenAI
+// Initialize AIML API (using OpenAI-compatible interface)
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: 'https://api.aimlapi.com/v1'
 });
 
 // PhET simulations data - Complete collection
@@ -446,12 +447,16 @@ async function generateAIResponse(message: string, documentId?: string): Promise
   } catch (error) {
     console.error('AI chat error:', error);
     
-    // If quota exceeded, provide helpful response instead of generic error
+    // Handle different API error types
     if (error.code === 'insufficient_quota') {
-      return "Hi! I'm your study assistant. Unfortunately, my AI features are temporarily unavailable due to API quota limits. To enable full AI capabilities including personalized help with your study materials, please add credits to your OpenAI account at https://platform.openai.com/account/billing. In the meantime, you can still upload PDFs, browse videos, and use interactive simulations!";
+      return "Hi! I'm your study assistant. Unfortunately, my AI features are temporarily unavailable due to API quota limits. To enable full AI capabilities including personalized help with your study materials, please add credits to your AIML account at https://aimlapi.com. In the meantime, you can still upload PDFs, browse videos, and use interactive simulations!";
     }
     
-    return "I'm having trouble connecting to my AI service right now. Please add credits to your OpenAI account or try again later.";
+    if (error.status === 403) {
+      return "Hi! I'm your study assistant. The AIML API key needs to be authorized or has insufficient permissions. Please check your AIML API key at https://aimlapi.com/dashboard and ensure it has the proper permissions. You can still upload PDFs, browse videos, and use interactive simulations!";
+    }
+    
+    return "I'm having trouble connecting to my AI service right now. Please check your AIML API key or try again later.";
   }
 }
 
