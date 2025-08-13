@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Search, BookOpen, Play } from "lucide-react";
+import { ExternalLink, Search, BookOpen, Play, Home, Filter, FlaskConical } from "lucide-react";
 import { DocumentWithTopics } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 interface PhETSimulation {
   id: number;
@@ -20,10 +23,13 @@ interface VideoResult {
 }
 
 export default function Simulations() {
+  const [, navigate] = useLocation();
   const [selectedDocument, setSelectedDocument] = useState<DocumentWithTopics | null>(null);
   const [relatedSimulations, setRelatedSimulations] = useState<PhETSimulation[]>([]);
   const [relatedVideos, setRelatedVideos] = useState<VideoResult[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   // Fetch all documents
   const { data: documents = [] } = useQuery<DocumentWithTopics[]>({
@@ -34,6 +40,40 @@ export default function Simulations() {
   const { data: allSimulations = [] } = useQuery<PhETSimulation[]>({
     queryKey: ["/api/simulations"],
   });
+
+  // Categories for filtering
+  const categories = [
+    { id: "all", name: "All Simulations", icon: FlaskConical },
+    { id: "physics", name: "Physics", icon: FlaskConical },
+    { id: "chemistry", name: "Chemistry", icon: FlaskConical },
+    { id: "math", name: "Mathematics", icon: FlaskConical },
+    { id: "biology", name: "Biology", icon: FlaskConical },
+  ];
+
+  // Filter simulations based on search and category
+  const filteredSimulations = useMemo(() => {
+    let filtered = allSimulations;
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(sim => 
+        sim.keywords.some(keyword => 
+          keyword.toLowerCase().includes(selectedCategory)
+        )
+      );
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(sim =>
+        sim.title.toLowerCase().includes(query) ||
+        sim.keywords.some(keyword => keyword.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  }, [allSimulations, selectedCategory, searchQuery]);
 
   const handleDocumentSelect = async (document: DocumentWithTopics) => {
     setSelectedDocument(document);
@@ -67,12 +107,67 @@ export default function Simulations() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="font-orbitron text-4xl text-neon-cyan mb-4">PHET SIMULATIONS</h1>
-          <p className="text-muted-foreground font-poppins">
-            Interactive physics, chemistry, and math simulations for hands-on learning
-          </p>
+        {/* Header with Home Button */}
+        <div className="flex items-center justify-between mb-8">
+          <Button
+            onClick={() => navigate('/')}
+            className="studycore-button px-4 py-2"
+            data-testid="button-home"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            HOME
+          </Button>
+          <div className="text-center flex-1">
+            <h1 className="font-orbitron text-4xl text-neon-cyan mb-2">PHET SIMULATIONS</h1>
+            <p className="text-muted-foreground font-poppins">
+              Interactive physics, chemistry, and math simulations for hands-on learning
+            </p>
+          </div>
+          <div className="w-20"></div> {/* Spacer for centering */}
+        </div>
+
+        {/* Search and Filter Controls */}
+        <div className="studycore-card p-6 mb-8">
+          <h2 className="font-orbitron text-xl text-neon-cyan mb-4">EXPLORE SIMULATIONS</h2>
+          
+          {/* Search Bar */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search simulations by name or topic..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 studycore-input"
+              data-testid="input-search-simulations"
+            />
+          </div>
+
+          {/* Category Filters */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {categories.map((category) => {
+              const IconComponent = category.icon;
+              return (
+                <Button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`px-4 py-2 ${
+                    selectedCategory === category.id 
+                      ? 'studycore-button-active' 
+                      : 'studycore-button'
+                  }`}
+                  data-testid={`button-category-${category.id}`}
+                >
+                  <IconComponent className="w-4 h-4 mr-2" />
+                  {category.name}
+                </Button>
+              );
+            })}
+          </div>
+
+          {/* Results Count */}
+          <div className="text-sm text-muted-foreground font-orbitron">
+            SHOWING {filteredSimulations.length} OF {allSimulations.length} SIMULATIONS
+          </div>
         </div>
 
         {/* Document Selection */}
@@ -106,53 +201,101 @@ export default function Simulations() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* All Available Simulations */}
-          <div>
-            <h2 className="font-orbitron text-xl text-neon-cyan mb-4">ALL AVAILABLE SIMULATIONS</h2>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {allSimulations.map(simulation => (
+        {/* Filtered Simulations Display */}
+        <div className="studycore-card p-6 mb-8">
+          <h2 className="font-orbitron text-xl text-neon-cyan mb-6">
+            {selectedCategory === "all" ? "ALL SIMULATIONS" : categories.find(c => c.id === selectedCategory)?.name?.toUpperCase() + " SIMULATIONS"}
+          </h2>
+          
+          {filteredSimulations.length === 0 ? (
+            <div className="text-center py-12">
+              <FlaskConical className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-orbitron text-lg text-muted-foreground mb-2">NO SIMULATIONS FOUND</h3>
+              <p className="text-muted-foreground font-poppins">
+                Try adjusting your search terms or selecting a different category.
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSimulations.map(simulation => (
                 <div
                   key={simulation.id}
-                  className="bg-card border border-border p-4 neon-glow-hover transition-all duration-300"
+                  className="bg-card border border-border rounded-lg p-6 neon-glow-hover transition-all duration-300 hover:border-neon-cyan"
                   data-testid={`card-simulation-${simulation.id}`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-orbitron text-foreground text-lg mb-2">{simulation.title}</h3>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {simulation.keywords.map(keyword => (
+                  <div className="flex flex-col h-full">
+                    <div className="flex-1 mb-4">
+                      <h3 className="font-orbitron text-foreground text-lg mb-3 line-clamp-2">{simulation.title}</h3>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {simulation.keywords.slice(0, 3).map(keyword => (
                           <span
                             key={keyword}
-                            className="bg-neon-cyan bg-opacity-20 text-neon-cyan px-2 py-1 text-xs font-poppins"
+                            className="bg-neon-cyan bg-opacity-20 text-neon-cyan px-2 py-1 text-xs font-poppins rounded"
                           >
                             {keyword}
                           </span>
                         ))}
+                        {simulation.keywords.length > 3 && (
+                          <span className="text-muted-foreground text-xs font-poppins px-2 py-1">
+                            +{simulation.keywords.length - 3} more
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <button
+                    <Button
                       onClick={() => handleSimulationLaunch(simulation)}
-                      className="studycore-button px-4 py-2 ml-4"
+                      className="studycore-button w-full py-3"
                       data-testid={`button-launch-${simulation.id}`}
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
-                      LAUNCH
-                    </button>
+                      LAUNCH SIMULATION
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Document-Related Content */}
-          <div>
+        {/* Document-based Related Content (Optional Section) */}
+        {documents.length > 0 && (
+          <div className="studycore-card p-6">
+            <h2 className="font-orbitron text-xl text-neon-cyan mb-4">DOCUMENT-RELATED CONTENT</h2>
+            <p className="text-muted-foreground font-poppins text-sm mb-6">
+              Select a document to see related simulations and videos based on extracted topics.
+            </p>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {documents.map(doc => (
+                <div
+                  key={doc.id}
+                  className={`bg-card border-2 p-4 cursor-pointer transition-all duration-300 ${
+                    selectedDocument?.id === doc.id 
+                      ? 'border-neon-cyan neon-glow' 
+                      : 'border-border hover:border-neon-cyan'
+                  }`}
+                  onClick={() => handleDocumentSelect(doc)}
+                  data-testid={`card-document-${doc.id}`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <BookOpen className="w-5 h-5 text-neon-cyan" />
+                    <div>
+                      <h3 className="font-orbitron text-foreground text-sm">{doc.originalName}</h3>
+                      <p className="text-muted-foreground text-xs">
+                        {doc.topics?.length || 0} topics extracted
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {selectedDocument ? (
               <div className="space-y-6">
                 <div>
-                  <h2 className="font-orbitron text-xl text-neon-cyan mb-4">
+                  <h3 className="font-orbitron text-lg text-neon-cyan mb-4">
                     RELATED SIMULATIONS FOR "{selectedDocument.originalName}"
-                  </h2>
+                  </h3>
                   {relatedSimulations.length > 0 ? (
                     <div className="space-y-3">
                       {relatedSimulations.map(simulation => (
@@ -170,14 +313,14 @@ export default function Simulations() {
                                 ))}
                               </div>
                             </div>
-                            <button
+                            <Button
                               onClick={() => handleSimulationLaunch(simulation)}
                               className="studycore-button px-3 py-1 text-xs"
                               data-testid={`button-launch-related-${simulation.id}`}
                             >
                               <ExternalLink className="w-3 h-3 mr-1" />
                               LAUNCH
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -188,51 +331,17 @@ export default function Simulations() {
                     </p>
                   )}
                 </div>
-
-                <div>
-                  <h2 className="font-orbitron text-xl text-neon-cyan mb-4">RELATED LEARNING VIDEOS</h2>
-                  {relatedVideos.length > 0 ? (
-                    <div className="space-y-3">
-                      {relatedVideos.map(video => (
-                        <div
-                          key={video.videoId}
-                          className="bg-card border border-border p-3 cursor-pointer neon-glow-hover transition-all duration-300"
-                          onClick={() => handleVideoClick(video)}
-                          data-testid={`card-related-video-${video.videoId}`}
-                        >
-                          <div className="flex space-x-3">
-                            <img
-                              src={video.thumbnailUrl}
-                              alt={video.title}
-                              className="w-16 h-12 object-cover"
-                            />
-                            <div className="flex-1">
-                              <h4 className="font-orbitron text-foreground text-sm line-clamp-2">{video.title}</h4>
-                              <p className="text-muted-foreground text-xs">{video.channel}</p>
-                            </div>
-                            <Play className="w-4 h-4 text-neon-cyan" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground font-poppins text-sm">
-                      No related videos found for this document.
-                    </p>
-                  )}
-                </div>
               </div>
             ) : (
-              <div className="text-center py-12">
-                <Search className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-orbitron text-muted-foreground text-lg mb-2">SELECT A DOCUMENT</h3>
+              <div className="text-center py-8">
+                <Search className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground font-poppins text-sm">
-                  Choose a document above to see related simulations and learning videos
+                  Select a document above to see related content
                 </p>
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Video Player Modal */}
