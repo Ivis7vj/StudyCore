@@ -36,15 +36,8 @@ export default function Dashboard() {
     setShowVoiceChat(true);
   };
 
-  const handleDailyChallengeClick = async () => {
-    try {
-      const response = await fetch('/api/daily-challenge');
-      const questions = await response.json();
-      // TODO: Navigate to daily challenge quiz page
-      alert(`Daily Challenge - ${questions.length} questions ready!`);
-    } catch (error) {
-      alert('Daily Challenge - Random quiz from all topics - to be implemented');
-    }
+  const handleDailyChallengeClick = () => {
+    navigate('/daily-challenge');
   };
 
   const handleResumeDocument = (documentId: string) => {

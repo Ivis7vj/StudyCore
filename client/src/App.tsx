@@ -10,6 +10,7 @@ import Topics from "@/pages/topics";
 import TopicDetail from "@/pages/topic-detail";
 import History from "@/pages/history";
 import Simulations from "@/pages/simulations";
+import DailyChallenge from "@/pages/daily-challenge";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/topic/:topicId" component={TopicDetail} />
       <Route path="/history" component={History} />
       <Route path="/simulations" component={Simulations} />
+      <Route path="/daily-challenge" component={DailyChallenge} />
       <Route component={NotFound} />
     </Switch>
   );
