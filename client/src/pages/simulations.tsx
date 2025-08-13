@@ -108,18 +108,19 @@ export default function Simulations() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-8">
         {/* Header with Home Button */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 animate-fade-in-up">
           <Button
             onClick={() => navigate('/')}
-            className="studycore-button px-4 py-2"
+            className="studycore-button px-4 py-2 hover-lift animate-float"
+            style={{ animationDelay: '0.1s' }}
             data-testid="button-home"
           >
-            <Home className="w-4 h-4 mr-2" />
+            <Home className="w-4 h-4 mr-2 animate-pulse-glow" />
             HOME
           </Button>
           <div className="text-center flex-1">
-            <h1 className="font-orbitron text-4xl text-neon-cyan mb-2">PHET SIMULATIONS</h1>
-            <p className="text-muted-foreground font-poppins">
+            <h1 className="font-orbitron text-4xl gradient-text mb-2 animate-fade-in-up">PHET SIMULATIONS</h1>
+            <p className="text-muted-foreground font-poppins animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
               Interactive physics, chemistry, and math simulations for hands-on learning
             </p>
           </div>
@@ -127,12 +128,12 @@ export default function Simulations() {
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="studycore-card p-6 mb-8">
-          <h2 className="font-orbitron text-xl text-neon-cyan mb-4">EXPLORE SIMULATIONS</h2>
+        <div className="studycore-card p-6 mb-8 animate-scale-in">
+          <h2 className="font-orbitron text-xl text-neon-cyan mb-4 text-glow-pulse">EXPLORE SIMULATIONS</h2>
           
           {/* Search Bar */}
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <div className="relative mb-6 animate-slide-in-left" style={{ animationDelay: '0.1s' }}>
+            <Search className="absolute left-3 top-3 h-4 w-4 text-neon-cyan animate-pulse-glow" />
             <Input
               placeholder="Search simulations by name or topic..."
               value={searchQuery}
@@ -143,21 +144,22 @@ export default function Simulations() {
           </div>
 
           {/* Category Filters */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {categories.map((category) => {
+          <div className="flex flex-wrap gap-2 mb-4 animate-slide-in-right" style={{ animationDelay: '0.2s' }}>
+            {categories.map((category, index) => {
               const IconComponent = category.icon;
               return (
                 <Button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`px-4 py-2 ${
+                  className={`px-4 py-2 hover-lift animate-scale-in ${
                     selectedCategory === category.id 
                       ? 'studycore-button-active' 
                       : 'studycore-button'
                   }`}
+                  style={{ animationDelay: `${0.3 + index * 0.1}s` }}
                   data-testid={`button-category-${category.id}`}
                 >
-                  <IconComponent className="w-4 h-4 mr-2" />
+                  <IconComponent className="w-4 h-4 mr-2 animate-pulse-glow" />
                   {category.name}
                 </Button>
               );
@@ -165,31 +167,32 @@ export default function Simulations() {
           </div>
 
           {/* Results Count */}
-          <div className="text-sm text-muted-foreground font-orbitron">
+          <div className="text-sm text-muted-foreground font-orbitron animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
             SHOWING {filteredSimulations.length} OF {allSimulations.length} SIMULATIONS
           </div>
         </div>
 
         {/* Document Selection */}
         {documents.length > 0 && (
-          <div className="mb-8">
-            <h2 className="font-orbitron text-xl text-neon-cyan mb-4">SELECT DOCUMENT FOR RELATED CONTENT</h2>
+          <div className="mb-8 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <h2 className="font-orbitron text-xl text-neon-cyan mb-4 text-glow-pulse">SELECT DOCUMENT FOR RELATED CONTENT</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {documents.map(doc => (
+              {documents.map((doc, index) => (
                 <div
                   key={doc.id}
-                  className={`bg-card border-2 p-4 cursor-pointer transition-all duration-300 ${
+                  className={`glass-card border-2 p-4 cursor-pointer transition-all duration-300 hover-lift animate-scale-in ${
                     selectedDocument?.id === doc.id 
-                      ? 'border-neon-cyan neon-glow' 
+                      ? 'border-neon-cyan animate-pulse-glow' 
                       : 'border-border hover:border-neon-cyan'
                   }`}
+                  style={{ animationDelay: `${0.4 + index * 0.1}s` }}
                   onClick={() => handleDocumentSelect(doc)}
                   data-testid={`card-document-${doc.id}`}
                 >
                   <div className="flex items-center space-x-3">
-                    <BookOpen className="w-5 h-5 text-neon-cyan" />
-                    <div>
-                      <h3 className="font-orbitron text-foreground text-sm">{doc.originalName}</h3>
+                    <BookOpen className="w-5 h-5 text-neon-cyan animate-pulse-glow" />
+                    <div className="flex-1">
+                      <h3 className="font-orbitron text-foreground text-sm truncate">{doc.originalName}</h3>
                       <p className="text-muted-foreground text-xs">
                         {doc.topics?.length || 0} topics extracted
                       </p>
@@ -202,14 +205,14 @@ export default function Simulations() {
         )}
 
         {/* Filtered Simulations Display */}
-        <div className="studycore-card p-6 mb-8">
-          <h2 className="font-orbitron text-xl text-neon-cyan mb-6">
+        <div className="studycore-card p-6 mb-8 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+          <h2 className="font-orbitron text-xl text-neon-cyan mb-6 text-glow-pulse">
             {selectedCategory === "all" ? "ALL SIMULATIONS" : categories.find(c => c.id === selectedCategory)?.name?.toUpperCase() + " SIMULATIONS"}
           </h2>
           
           {filteredSimulations.length === 0 ? (
-            <div className="text-center py-12">
-              <FlaskConical className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <div className="text-center py-12 animate-scale-in">
+              <FlaskConical className="w-16 h-16 text-muted-foreground mx-auto mb-4 animate-float" />
               <h3 className="font-orbitron text-lg text-muted-foreground mb-2">NO SIMULATIONS FOUND</h3>
               <p className="text-muted-foreground font-poppins">
                 Try adjusting your search terms or selecting a different category.
@@ -217,26 +220,34 @@ export default function Simulations() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredSimulations.map(simulation => (
+              {filteredSimulations.map((simulation, index) => (
                 <div
                   key={simulation.id}
-                  className="bg-card border border-border rounded-lg p-6 neon-glow-hover transition-all duration-300 hover:border-neon-cyan"
+                  className="glass-card border border-border p-6 transition-all duration-300 hover:border-neon-cyan hover-lift animate-scale-in"
+                  style={{ 
+                    animationDelay: `${0.5 + index * 0.1}s`,
+                    borderRadius: 'var(--radius)'
+                  }}
                   data-testid={`card-simulation-${simulation.id}`}
                 >
                   <div className="flex flex-col h-full">
                     <div className="flex-1 mb-4">
-                      <h3 className="font-orbitron text-foreground text-lg mb-3 line-clamp-2">{simulation.title}</h3>
+                      <div className="flex items-center mb-3">
+                        <FlaskConical className="w-5 h-5 text-neon-cyan mr-2 animate-pulse-glow" />
+                        <h3 className="font-orbitron text-foreground text-lg font-bold">{simulation.title}</h3>
+                      </div>
                       <div className="flex flex-wrap gap-2 mb-4">
-                        {simulation.keywords.slice(0, 3).map(keyword => (
+                        {simulation.keywords.slice(0, 3).map((keyword, idx) => (
                           <span
                             key={keyword}
-                            className="bg-neon-cyan bg-opacity-20 text-neon-cyan px-2 py-1 text-xs font-poppins rounded"
+                            className="bg-gradient-to-r from-neon-cyan to-neon-blue bg-opacity-20 text-neon-cyan px-3 py-1 text-xs font-poppins rounded-full border border-neon-cyan border-opacity-30 animate-pulse-glow"
+                            style={{ animationDelay: `${idx * 0.2}s` }}
                           >
                             {keyword}
                           </span>
                         ))}
                         {simulation.keywords.length > 3 && (
-                          <span className="text-muted-foreground text-xs font-poppins px-2 py-1">
+                          <span className="text-muted-foreground text-xs font-poppins px-2 py-1 opacity-60">
                             +{simulation.keywords.length - 3} more
                           </span>
                         )}
@@ -244,10 +255,11 @@ export default function Simulations() {
                     </div>
                     <Button
                       onClick={() => handleSimulationLaunch(simulation)}
-                      className="studycore-button w-full py-3"
+                      className="studycore-button-primary w-full py-3 hover-lift animate-float"
+                      style={{ animationDelay: `${1 + index * 0.1}s` }}
                       data-testid={`button-launch-${simulation.id}`}
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <Play className="w-4 h-4 mr-2 animate-pulse-glow" />
                       LAUNCH SIMULATION
                     </Button>
                   </div>

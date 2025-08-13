@@ -54,58 +54,65 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <section className="mb-12">
-        <h2 className="font-orbitron text-2xl font-bold text-foreground mb-8">MISSION CONTROL</h2>
+        <h2 className="font-orbitron text-2xl font-bold gradient-text mb-8 animate-fade-in-up">MISSION CONTROL</h2>
         
         {/* PDF Upload and Quick Actions */}
         <div className="grid lg:grid-cols-2 gap-8 mb-8">
-          <PDFUpload onUploadSuccess={handleUploadSuccess} />
+          <div className="animate-slide-in-left">
+            <PDFUpload onUploadSuccess={handleUploadSuccess} />
+          </div>
 
           {/* Quick Actions */}
-          <div className="studycore-card p-6">
-            <h3 className="font-orbitron text-lg text-neon-cyan mb-4">QUICK ACCESS</h3>
+          <div className="studycore-card p-6 animate-slide-in-right">
+            <h3 className="font-orbitron text-lg text-neon-cyan mb-4 text-glow-pulse">QUICK ACCESS</h3>
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleHistoryClick}
-                className="studycore-button py-4 px-4 flex flex-col items-center"
+                className="studycore-button py-4 px-4 flex flex-col items-center hover-lift animate-float"
+                style={{ animationDelay: '0.1s' }}
                 data-testid="button-history"
               >
-                <History className="text-neon-cyan w-6 h-6 mb-2" />
+                <History className="text-neon-cyan w-6 h-6 mb-2 animate-pulse-glow" />
                 <span className="font-orbitron text-sm">HISTORY</span>
               </button>
               
               <button
                 onClick={handleResourcesClick}
-                className="studycore-button py-4 px-4 flex flex-col items-center"
+                className="studycore-button py-4 px-4 flex flex-col items-center hover-lift animate-float"
+                style={{ animationDelay: '0.2s' }}
                 data-testid="button-resources"
               >
-                <Video className="text-neon-cyan w-6 h-6 mb-2" />
+                <Video className="text-neon-cyan w-6 h-6 mb-2 animate-pulse-glow" />
                 <span className="font-orbitron text-sm">VIDEOS</span>
               </button>
               
               <button
                 onClick={handleSimulationsClick}
-                className="studycore-button py-4 px-4 flex flex-col items-center"
+                className="studycore-button py-4 px-4 flex flex-col items-center hover-lift animate-float"
+                style={{ animationDelay: '0.3s' }}
                 data-testid="button-simulations"
               >
-                <FlaskConical className="text-neon-cyan w-6 h-6 mb-2" />
+                <FlaskConical className="text-neon-cyan w-6 h-6 mb-2 animate-pulse-glow" />
                 <span className="font-orbitron text-sm">SIMULATIONS</span>
               </button>
               
               <button
                 onClick={handleVoiceChatClick}
-                className="studycore-button py-4 px-4 flex flex-col items-center"
+                className="studycore-button py-4 px-4 flex flex-col items-center hover-lift animate-float"
+                style={{ animationDelay: '0.4s' }}
                 data-testid="button-voice-chat"
               >
-                <Mic className="text-neon-cyan w-6 h-6 mb-2" />
+                <Mic className="text-neon-cyan w-6 h-6 mb-2 animate-pulse-glow" />
                 <span className="font-orbitron text-sm">VOICE Q&A</span>
               </button>
               
               <button
                 onClick={handleDailyChallengeClick}
-                className="studycore-button py-4 px-4 flex flex-col items-center col-span-2"
+                className="studycore-button-primary py-4 px-4 flex flex-col items-center col-span-2 hover-lift animate-float"
+                style={{ animationDelay: '0.5s' }}
                 data-testid="button-daily-challenge"
               >
-                <Trophy className="text-neon-yellow w-6 h-6 mb-2" />
+                <Trophy className="text-neon-yellow w-6 h-6 mb-2 animate-pulse-glow" />
                 <span className="font-orbitron text-sm">DAILY CHALLENGE</span>
               </button>
             </div>
@@ -113,27 +120,37 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Documents */}
-        <div className="studycore-card p-6">
-          <h3 className="font-orbitron text-lg text-neon-cyan mb-4">RECENT DOCUMENTS</h3>
+        <div className="studycore-card p-6 animate-fade-in-up">
+          <h3 className="font-orbitron text-lg text-neon-cyan mb-4 text-glow-pulse">RECENT DOCUMENTS</h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {isLoading ? (
-              <div className="text-muted-foreground font-orbitron">LOADING DOCUMENTS...</div>
+              <div className="col-span-full flex items-center justify-center py-8">
+                <div className="loading-spinner"></div>
+                <span className="text-muted-foreground font-orbitron ml-3">LOADING DOCUMENTS...</span>
+              </div>
             ) : documents.length === 0 ? (
-              <div className="text-muted-foreground font-orbitron col-span-full">
-                NO DOCUMENTS UPLOADED YET. UPLOAD YOUR FIRST PDF TO GET STARTED.
+              <div className="col-span-full text-center py-8 animate-scale-in">
+                <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 animate-float" />
+                <div className="text-muted-foreground font-orbitron mb-2">
+                  NO DOCUMENTS UPLOADED YET
+                </div>
+                <p className="text-muted-foreground font-poppins text-sm">
+                  Upload your first PDF to get started with AI-powered study assistance
+                </p>
               </div>
             ) : (
-              documents.map(document => (
+              documents.map((document, index) => (
                 <div
                   key={document.id}
-                  className="studycore-card p-4 cursor-pointer"
+                  className="glass-card p-4 cursor-pointer hover-lift animate-scale-in"
+                  style={{ animationDelay: `${index * 0.1}s` }}
                   onClick={() => handleResumeDocument(document.id)}
                   data-testid={`card-document-${document.id}`}
                 >
                   <div className="flex items-center mb-3">
-                    <FileText className="text-neon-red text-xl mr-3 w-6 h-6" />
-                    <div>
-                      <h4 className="font-orbitron text-foreground text-sm">{document.originalName}</h4>
+                    <FileText className="text-neon-red text-xl mr-3 w-6 h-6 animate-pulse-glow" />
+                    <div className="flex-1">
+                      <h4 className="font-orbitron text-foreground text-sm truncate">{document.originalName}</h4>
                       <p className="text-muted-foreground text-xs">
                         {document.topicCount} topics extracted
                       </p>
@@ -143,7 +160,7 @@ export default function Dashboard() {
                     Uploaded: {new Date(document.uploadDate).toLocaleDateString()}
                   </div>
                   <button
-                    className="studycore-button px-4 py-1 text-xs w-full"
+                    className="studycore-button-primary px-4 py-2 text-xs w-full hover-lift"
                     data-testid={`button-resume-study-${document.id}`}
                   >
                     RESUME STUDY

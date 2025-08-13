@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { insertDocumentSchema, insertTopicSchema, insertQuestionSchema, insertYoutubeVideoSchema, insertPhetSimulationSchema } from "@shared/schema";
+import OpenAI from "openai";
 
 // Extend Request interface for multer
 interface MulterRequest extends Request {
@@ -26,8 +27,13 @@ const upload = multer({
   }
 });
 
-// YouTube API configuration
+// API configurations
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU";
+
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 // PhET simulations data - Complete collection
 const PHET_SIMULATIONS = [
@@ -330,8 +336,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       }];
 
-      // Generate AI response (simplified keyword matching)
-      const aiResponse = generateAIResponse(message, documentId);
+      // Generate AI response using OpenAI
+      const aiResponse = await generateAIResponse(message, documentId);
       messages.push({
         role: 'assistant',
         content: aiResponse,
@@ -399,49 +405,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Background PDF processing function
-async function processPDF(documentId: string, filePath: string) {
+// AI-powered chat response generation
+async function generateAIResponse(message: string, documentId?: string): Promise<string> {
   try {
-    await storage.updateDocumentStatus(documentId, 'analyzing');
-
-    // Simulate PDF text extraction (replace with actual PDF processing)
-    const dataBuffer = fs.readFileSync(filePath);
-    const extractedText = `Sample extracted text from PDF file. This would contain the actual PDF content in a real implementation.
+    let contextText = '';
     
-Topic 1: Introduction to Physics
-Physics is the fundamental science that studies matter, energy, and their interactions. It provides the foundation for understanding how the universe works at all scales.
-
-Topic 2: Newton's Laws of Motion
-Newton's three laws of motion describe the relationship between forces acting on a body and its motion due to those forces.
-
-Topic 3: Energy and Work
-Energy is the capacity to do work. The law of conservation of energy states that energy cannot be created or destroyed, only transformed.
-
-Topic 4: Electromagnetic Waves
-Electromagnetic waves are oscillations of electric and magnetic fields that propagate through space at the speed of light.`;
-
-    // Update document with extracted text
-    const document = await storage.getDocument(documentId);
-    if (document) {
-      document.extractedText = extractedText;
+    // If there's a document, get its content for context
+    if (documentId) {
+      const document = await storage.getDocument(documentId);
+      if (document && document.extractedText) {
+        contextText = document.extractedText.substring(0, 2000); // Use first 2000 chars for context
+      }
     }
 
-    // Extract topics (simplified approach - in real implementation would use NLP)
-    const topics = await extractTopics(extractedText, documentId);
-    
-    await storage.updateDocumentStatus(documentId, 'ready', topics.length);
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are an educational AI assistant helping students understand their study materials. Be helpful, accurate, and encouraging. If provided with document context, reference it in your responses.${contextText ? `\n\nDocument context: ${contextText}` : ''}`
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    });
 
-    // Clean up uploaded file
-    fs.unlinkSync(filePath);
-    
+    return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response right now. Please try again.";
   } catch (error) {
-    console.error('PDF processing error:', error);
-    await storage.updateDocumentStatus(documentId, 'error');
+    console.error('AI chat error:', error);
+    return "I'm having trouble connecting to my AI service right now. Please try again in a moment.";
   }
 }
 
-// Simplified topic extraction (in production would use NLP/AI)
-async function extractTopics(text: string, documentId: string) {
+// Simple fallback topic extraction
+async function extractTopicsSimple(text: string, documentId: string) {
   const topics = [];
   
   // Split text into sections and identify potential topics
@@ -457,13 +458,13 @@ async function extractTopics(text: string, documentId: string) {
       documentId,
       title,
       summary,
-      pages: `${i * 5 + 1}-${(i + 1) * 5}`, // Estimated page ranges
+      pages: `${i * 5 + 1}-${(i + 1) * 5}`,
       realWorldExample: generateRealWorldExample(title),
       order: i + 1
     });
 
-    // Generate questions for topic
-    await generateQuestions(topic.id, title);
+    // Generate simple questions
+    await generateQuestionsSimple(topic.id, title);
     
     // Search and store YouTube videos
     await searchAndStoreVideos(topic.id, title);
@@ -475,6 +476,112 @@ async function extractTopics(text: string, documentId: string) {
   }
   
   return topics;
+}
+
+// Background PDF processing function
+async function processPDF(documentId: string, filePath: string) {
+  try {
+    await storage.updateDocumentStatus(documentId, 'analyzing');
+
+    // Extract text from PDF using pdf-parse
+    const dataBuffer = fs.readFileSync(filePath);
+    const pdfParse = await import('pdf-parse');
+    const pdfData = await pdfParse.default(dataBuffer);
+    const extractedText = pdfData.text;
+
+    console.log(`Extracted ${extractedText.length} characters from PDF`);
+
+    if (!extractedText.trim()) {
+      throw new Error('No text could be extracted from PDF');
+    }
+
+    // Update document with extracted text
+    const document = await storage.getDocument(documentId);
+    if (document) {
+      document.extractedText = extractedText;
+    }
+
+    // Use AI to extract topics and generate study materials
+    const topics = await extractTopicsWithAI(extractedText, documentId);
+    
+    await storage.updateDocumentStatus(documentId, 'ready', topics.length);
+
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+  } catch (error) {
+    console.error('PDF processing error:', error);
+    await storage.updateDocumentStatus(documentId, 'error');
+  }
+}
+
+// AI-powered topic extraction using OpenAI
+async function extractTopicsWithAI(text: string, documentId: string) {
+  const topics = [];
+  
+  try {
+    console.log('Analyzing document with AI...');
+    
+    // Use OpenAI to extract topics and create summaries
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are an educational AI assistant. Analyze the provided text and extract 4-8 main topics. For each topic, provide a clear title and a 2-3 sentence summary. Format your response as JSON with this structure: {\"topics\": [{\"title\": \"Topic Title\", \"summary\": \"Brief summary\"}]}"
+        },
+        {
+          role: "user",
+          content: `Please analyze this educational content and extract the main topics:\n\n${text.substring(0, 4000)}`
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1000
+    });
+
+    const aiResponse = response.choices[0]?.message?.content;
+    if (!aiResponse) {
+      throw new Error('No response from AI');
+    }
+
+    console.log('AI Analysis Response:', aiResponse);
+    
+    const parsedResponse = JSON.parse(aiResponse);
+    const extractedTopics = parsedResponse.topics || [];
+
+    for (let i = 0; i < extractedTopics.length; i++) {
+      const aiTopic = extractedTopics[i];
+      const title = aiTopic.title || `Topic ${i + 1}`;
+      const summary = aiTopic.summary || 'No summary available.';
+    
+      // Create topic
+      const topic = await storage.createTopic({
+        documentId,
+        title,
+        summary,
+        pages: `${i * 5 + 1}-${(i + 1) * 5}`, // Estimated page ranges
+        realWorldExample: generateRealWorldExample(title),
+        order: i + 1
+      });
+
+      // Generate questions for topic using AI
+      await generateQuestionsWithAI(topic.id, title, summary);
+      
+      // Search and store YouTube videos
+      await searchAndStoreVideos(topic.id, title);
+      
+      // Find and store PhET simulation
+      await findAndStoreSimulation(topic.id, title);
+      
+      topics.push(topic);
+    }
+    
+    return topics;
+  } catch (error) {
+    console.error('AI topic extraction error:', error);
+    // Fallback to simple extraction if AI fails
+    return await extractTopicsSimple(text, documentId);
+  }
 }
 
 // Extract title from text section
@@ -490,24 +597,67 @@ function extractTitle(text: string): string {
   return "Topic " + (Math.floor(Math.random() * 100) + 1);
 }
 
-// Generate questions for a topic
-async function generateQuestions(topicId: string, title: string) {
-  // Simplified question generation
+// AI-powered question generation
+async function generateQuestionsWithAI(topicId: string, title: string, summary: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system", 
+          content: "Generate 2 educational questions about a topic. Format as JSON: {\"questions\": [{\"type\": \"MCQ\", \"question\": \"question text\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correctAnswer\": \"A\", \"explanation\": \"why this is correct\"}, {\"type\": \"Short\", \"question\": \"question text\", \"explanation\": \"sample answer\"}]}"
+        },
+        {
+          role: "user",
+          content: `Topic: ${title}\nSummary: ${summary}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 800
+    });
+
+    const aiResponse = response.choices[0]?.message?.content;
+    if (aiResponse) {
+      const parsedResponse = JSON.parse(aiResponse);
+      const questions = parsedResponse.questions || [];
+      
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        await storage.createQuestion({
+          topicId,
+          type: q.type,
+          question: q.question,
+          options: q.options || null,
+          correctAnswer: q.correctAnswer || null,
+          explanation: q.explanation,
+          order: i + 1
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Question generation error:', error);
+    // Fallback to simple questions
+    await generateQuestionsSimple(topicId, title);
+  }
+}
+
+// Simple fallback question generation
+async function generateQuestionsSimple(topicId: string, title: string) {
   const questions = [
     {
       type: 'MCQ',
-      question: `What is the main principle behind ${title}?`,
-      options: ['Option A', 'Option B', 'Option C', 'Option D'],
-      correctAnswer: 'Option A',
-      explanation: 'This is the correct explanation.',
+      question: `What is the main concept of ${title}?`,
+      options: ['Concept A', 'Concept B', 'Concept C', 'Concept D'],
+      correctAnswer: 'Concept A',
+      explanation: 'This covers the fundamental principle.',
       order: 1
     },
     {
       type: 'Short',
-      question: `Explain the practical applications of ${title}.`,
+      question: `Describe the key aspects of ${title}.`,
       options: null,
       correctAnswer: null,
-      explanation: 'Various applications include...',
+      explanation: 'Key aspects include the main principles and applications.',
       order: 2
     }
   ];
@@ -568,27 +718,4 @@ function generateRealWorldExample(title: string): string {
   return `Real-world applications of ${title} can be found in various industries and everyday life. This principle is fundamental to understanding how modern technology works and its practical implications.`;
 }
 
-// Generate AI response for chat
-function generateAIResponse(message: string, documentId?: string): string {
-  const messageLower = message.toLowerCase();
-  
-  const responses: Record<string, string> = {
-    'electromagnetic': 'Electromagnetic induction occurs when a conductor moves through a magnetic field, creating an induced EMF. This principle is fundamental to generators and transformers.',
-    'circuit': 'AC circuits involve impedance, which combines resistance and reactance. The phase relationship between voltage and current is crucial for power calculations.',
-    'faraday': "Faraday's Law states that EMF equals the negative rate of change of magnetic flux: EMF = -dΦ/dt. This law explains how generators and transformers work.",
-    'impedance': 'Impedance Z in AC circuits is calculated as Z = √(R² + (XL - XC)²), where R is resistance, XL is inductive reactance, and XC is capacitive reactance.',
-    'energy': 'Energy conservation is a fundamental principle in physics. Mechanical energy can be converted between kinetic and potential forms.',
-    'force': 'Force is defined by Newton\'s second law: F = ma. Forces cause acceleration and are vector quantities.',
-    'wave': 'Waves transfer energy without transferring matter. They have properties like frequency, wavelength, and amplitude.',
-    'hello': 'Hello! I\'m StudyCore AI, your study companion. I can help you understand concepts from your uploaded documents.',
-    'help': 'I can help you with questions about physics, chemistry, mathematics, and other topics from your study materials. Just ask me anything!'
-  };
 
-  for (const keyword in responses) {
-    if (messageLower.includes(keyword)) {
-      return responses[keyword];
-    }
-  }
-  
-  return 'I can help you understand concepts from your uploaded documents. Try asking about specific topics like electromagnetic induction, circuits, or any physics concepts. If you need more detailed help, please be more specific about what you\'d like to learn.';
-}
