@@ -30,8 +30,10 @@ const upload = multer({
 // API configurations
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU";
 
-// Initialize Gemini AI - use environment variable directly
-const genAI = new GoogleGenAI({});
+// Initialize Gemini AI
+const genAI = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY
+});
 
 // PhET simulations data - Complete collection
 const PHET_SIMULATIONS = [
