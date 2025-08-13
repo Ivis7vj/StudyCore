@@ -30,8 +30,8 @@ const upload = multer({
 // API configurations
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU";
 
-// Initialize Gemini AI
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+// Initialize Gemini AI - use environment variable directly
+const genAI = new GoogleGenAI({});
 
 // PhET simulations data - Complete collection
 const PHET_SIMULATIONS = [
@@ -431,7 +431,12 @@ async function generateAIResponse(message: string, documentId?: string): Promise
 
     const response = await genAI.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: prompt,
+      contents: [
+        {
+          parts: [{ text: prompt }],
+          role: "user"
+        }
+      ],
     });
 
     return response.text || "I'm sorry, I couldn't generate a response right now. Please try again.";
@@ -585,7 +590,12 @@ ${analysisText}`;
           required: ["topics"]
         },
       },
-      contents: prompt,
+      contents: [
+        {
+          parts: [{ text: prompt }],
+          role: "user"
+        }
+      ],
     });
 
     const aiResponse = response.text;
@@ -653,7 +663,7 @@ Topic: ${title}
 Summary: ${summary}`;
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -680,7 +690,12 @@ Summary: ${summary}`;
           required: ["questions"]
         },
       },
-      contents: prompt,
+      contents: [
+        {
+          parts: [{ text: prompt }],
+          role: "user"
+        }
+      ],
     });
 
     const aiResponse = response.text;
@@ -814,7 +829,12 @@ Create an interesting and educational ${subject} question that tests understandi
           required: ["question", "options", "correctAnswer", "explanation"]
         },
       },
-      contents: prompt,
+      contents: [
+        {
+          parts: [{ text: prompt }],
+          role: "user"
+        }
+      ],
     });
 
     const aiResponse = response.text;
