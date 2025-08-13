@@ -123,27 +123,46 @@ export default function TopicPack({ topicId }: TopicPackProps) {
                       ))}
                       
                       {showResults && (
-                        <div className="mt-2 p-2 bg-secondary border border-border">
+                        <div className="mt-3 p-3 bg-secondary border border-border rounded">
                           {quizAnswers[question.id] === question.correctAnswer ? (
-                            <div className="text-neon-green flex items-center">
+                            <div className="text-neon-green flex items-center mb-2">
                               <CheckCircle className="w-4 h-4 mr-2" />
                               Correct!
                             </div>
                           ) : (
-                            <div className="text-neon-red">
+                            <div className="text-neon-red mb-2">
                               Incorrect. Correct answer: {question.correctAnswer}
                             </div>
                           )}
+                          <div className="text-sm text-foreground">
+                            <strong>Explanation:</strong> {question.explanation}
+                          </div>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <textarea
-                      className="w-full bg-input border border-border text-foreground p-3 outline-none focus:border-neon-cyan"
-                      rows={3}
-                      placeholder="Type your answer..."
-                      data-testid={`textarea-question-${question.id}`}
-                    />
+                    <div>
+                      <textarea
+                        className="w-full bg-input border border-border text-foreground p-3 outline-none focus:border-neon-cyan mb-3"
+                        rows={3}
+                        placeholder="Type your answer..."
+                        data-testid={`textarea-question-${question.id}`}
+                      />
+                      {showResults && (
+                        <div className="mt-2 p-3 bg-secondary border border-border rounded">
+                          <div className="text-sm text-foreground">
+                            <strong>Sample Answer:</strong> {question.explanation}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Always show explanation for better learning */}
+                  {!showResults && (
+                    <div className="mt-2 p-2 bg-muted/20 border border-muted rounded text-xs text-muted-foreground">
+                      💡 Click "START QUIZ" to see detailed explanations and answers
+                    </div>
                   )}
                 </div>
               ))}
