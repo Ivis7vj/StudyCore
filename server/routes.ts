@@ -141,30 +141,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get PhET simulation for topic
+  // Get all available simulations or search by topic
   app.get('/api/simulations', async (req, res) => {
     try {
       const { topic } = req.query;
-      if (!topic) {
-        return res.status(400).json({ message: 'Topic parameter required' });
+      
+      if (topic) {
+        // Search for specific topic
+        const topicLower = (topic as string).toLowerCase();
+        const simulation = PHET_SIMULATIONS.find(sim => 
+          sim.keywords.some(keyword => topicLower.includes(keyword))
+        ) || PHET_SIMULATIONS[0]; // Default fallback
+
+        res.json({
+          title: simulation.title,
+          url: simulation.url,
+          inquiryPrompts: [
+            "PREDICT: What do you expect to happen in this simulation?",
+            "OBSERVE: What actually happens when you interact with it?",
+            "EXPLAIN: Why do you think this behavior occurs?"
+          ]
+        });
+      } else {
+        // Return all simulations
+        const simulations = PHET_SIMULATIONS.map((sim, index) => ({
+          id: index + 1,
+          title: sim.title,
+          url: sim.url,
+          keywords: sim.keywords
+        }));
+        res.json(simulations);
+      }
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get simulations' });
+    }
+  });
+
+  // Get simulations related to a specific document
+  app.get('/api/simulations/:documentId', async (req, res) => {
+    try {
+      const document = await storage.getDocument(req.params.documentId);
+      if (!document) {
+        return res.status(404).json({ message: 'Document not found' });
       }
 
-      const topicLower = (topic as string).toLowerCase();
-      const simulation = PHET_SIMULATIONS.find(sim => 
-        sim.keywords.some(keyword => topicLower.includes(keyword))
-      ) || PHET_SIMULATIONS[0]; // Default fallback
+      // Get topics for this document
+      const topics = await storage.getTopicsByDocument(req.params.documentId);
+      
+      // Extract keywords from document topics
+      const documentKeywords = topics
+        .flatMap((topic: any) => [topic.title, topic.summary].join(' ').toLowerCase().split(' '))
+        .filter((word: string) => word.length > 3);
 
-      res.json({
-        title: simulation.title,
-        url: simulation.url,
-        inquiryPrompts: [
-          "PREDICT: What do you expect to happen in this simulation?",
-          "OBSERVE: What actually happens when you interact with it?",
-          "EXPLAIN: Why do you think this behavior occurs?"
-        ]
-      });
+      // Find matching simulations
+      const relatedSimulations = PHET_SIMULATIONS
+        .map((sim, index) => ({
+          id: index + 1,
+          title: sim.title,
+          url: sim.url,
+          keywords: sim.keywords,
+          documentId: document.id,
+          relevanceScore: sim.keywords.reduce((score: number, keyword: string) => {
+            return score + (documentKeywords.some((docWord: string) => 
+              docWord.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(docWord)
+            ) ? 1 : 0);
+          }, 0)
+        }))
+        .filter(sim => sim.relevanceScore > 0)
+        .sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+      res.json(relatedSimulations);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to get simulation' });
+      console.error('Error getting related simulations:', error);
+      res.status(500).json({ message: 'Failed to get related simulations' });
     }
   });
 

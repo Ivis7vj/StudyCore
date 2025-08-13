@@ -29,8 +29,7 @@ export default function Dashboard() {
   };
 
   const handleSimulationsClick = () => {
-    // TODO: Implement PhET simulations browser
-    alert('PhET Simulations browser - to be implemented');
+    navigate('/simulations');
   };
 
   const handleVoiceChatClick = () => {

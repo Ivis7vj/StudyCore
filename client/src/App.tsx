@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import Topics from "@/pages/topics";
 import TopicDetail from "@/pages/topic-detail";
 import History from "@/pages/history";
+import Simulations from "@/pages/simulations";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/topics/:documentId" component={Topics} />
       <Route path="/topic/:topicId" component={TopicDetail} />
       <Route path="/history" component={History} />
+      <Route path="/simulations" component={Simulations} />
       <Route component={NotFound} />
     </Switch>
   );
