@@ -14,7 +14,7 @@ interface MulterRequest extends Request {
 // Configure multer for file uploads
 const upload = multer({ 
   dest: 'uploads/',
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req: any, file: any, cb: any) => {
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {

@@ -4,11 +4,13 @@ import { FileText, History, Video, FlaskConical, Mic, Trophy } from "lucide-reac
 import { DocumentWithTopics } from "@shared/schema";
 import PDFUpload from "@/components/pdf/pdf-upload";
 import VoiceChat from "@/components/voice/voice-chat";
+import VideoSearch from "@/components/video/video-search";
 import { useLocation } from "wouter";
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const [showVoiceChat, setShowVoiceChat] = useState(false);
+  const [showVideoSearch, setShowVideoSearch] = useState(false);
 
   const { data: documents = [], isLoading } = useQuery<DocumentWithTopics[]>({
     queryKey: ['/api/documents'],
@@ -23,8 +25,7 @@ export default function Dashboard() {
   };
 
   const handleResourcesClick = () => {
-    // TODO: Implement YouTube resources search page
-    alert('YouTube Resources section - to be implemented');
+    setShowVideoSearch(true);
   };
 
   const handleSimulationsClick = () => {
@@ -158,6 +159,11 @@ export default function Dashboard() {
       {/* Voice Chat Modal */}
       {showVoiceChat && (
         <VoiceChat onClose={() => setShowVoiceChat(false)} />
+      )}
+
+      {/* Video Search Modal */}
+      {showVideoSearch && (
+        <VideoSearch onClose={() => setShowVideoSearch(false)} />
       )}
     </div>
   );
