@@ -133,12 +133,19 @@ const PHET_SIMULATIONS = [
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // PDF Upload endpoint
+  // PDF Upload endpoint  
   app.post('/api/upload', upload.single('pdf'), async (req: MulterRequest, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No PDF file uploaded' });
       }
+
+      console.log('File uploaded successfully:', {
+        originalname: req.file.originalname,
+        filename: req.file.filename,
+        path: req.file.path,
+        size: req.file.size
+      });
 
       // Create document record
       const document = await storage.createDocument({
@@ -147,8 +154,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         extractedText: null
       });
 
-      // Start processing in background
-      processPDF(document.id, req.file.path);
+      // Start processing in background with correct file path
+      processPDF(document.id, req.file.path).catch(error => {
+        console.error(`Background PDF processing failed for ${document.id}:`, error);
+      });
 
       res.json({ documentId: document.id, status: 'uploading' });
     } catch (error) {
@@ -503,8 +512,10 @@ async function processPDF(documentId: string, filePath: string) {
 
     // Use AI to extract topics and generate study materials
     console.log('Starting AI topic extraction...');
+    await storage.updateDocumentStatus(documentId, 'generating-topics');
+    
     const topics = await extractTopicsWithAI(extractedText, documentId);
-    console.log(`Generated ${topics.length} topics from document`);
+    console.log(`Generated ${topics.length} topics with study materials`);
     
     await storage.updateDocumentStatus(documentId, 'ready', topics.length);
 
@@ -536,17 +547,20 @@ async function extractTopicsWithAI(text: string, documentId: string) {
   const topics = [];
   
   try {
-    console.log('Analyzing document with AI...');
+    console.log('Analyzing document with Gemini AI...');
+    
+    // Use more text for better analysis, limit for performance
+    const analysisText = text.substring(0, 8000);
     
     // Use Gemini to extract topics and create summaries
-    const prompt = `You are an educational AI assistant. Analyze the provided text and extract 4-8 main topics. For each topic, provide a clear title and a 2-3 sentence summary. Format your response as JSON with this structure: {"topics": [{"title": "Topic Title", "summary": "Brief summary"}]}
+    const prompt = `You are an educational AI assistant. Analyze the provided text and extract 3-6 main topics. For each topic, provide a clear title and a 2-3 sentence summary. Format your response as JSON with this structure: {"topics": [{"title": "Topic Title", "summary": "Brief summary"}]}
 
 Please analyze this educational content and extract the main topics:
 
-${text.substring(0, 4000)}`;
+${analysisText}`;
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash", // Use flash model for faster processing
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -595,14 +609,12 @@ ${text.substring(0, 4000)}`;
         order: i + 1
       });
 
-      // Generate questions for topic using AI
-      await generateQuestionsWithAI(topic.id, title, summary);
-      
-      // Search and store YouTube videos
-      await searchAndStoreVideos(topic.id, title);
-      
-      // Find and store PhET simulation
-      await findAndStoreSimulation(topic.id, title);
+      // Generate all resources concurrently for better performance
+      await Promise.all([
+        generateQuestionsWithAI(topic.id, title, summary),
+        searchAndStoreVideos(topic.id, title),
+        findAndStoreSimulation(topic.id, title)
+      ]);
       
       topics.push(topic);
     }
