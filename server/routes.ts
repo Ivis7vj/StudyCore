@@ -5,7 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { insertDocumentSchema, insertTopicSchema, insertQuestionSchema, insertYoutubeVideoSchema, insertPhetSimulationSchema } from "@shared/schema";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
 // Extend Request interface for multer
 interface MulterRequest extends Request {
@@ -30,10 +30,8 @@ const upload = multer({
 // API configurations
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU";
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize Gemini AI
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 // PhET simulations data - Complete collection
 const PHET_SIMULATIONS = [
@@ -418,23 +416,15 @@ async function generateAIResponse(message: string, documentId?: string): Promise
       }
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are an educational AI assistant helping students understand their study materials. Be helpful, accurate, and encouraging. If provided with document context, reference it in your responses.${contextText ? `\n\nDocument context: ${contextText}` : ''}`
-        },
-        {
-          role: "user",
-          content: message
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 500
+    const model = genAI.models.generateContent;
+    const prompt = `You are an educational AI assistant helping students understand their study materials. Be helpful, accurate, and encouraging. If provided with document context, reference it in your responses.${contextText ? `\n\nDocument context: ${contextText}` : ''}\n\nStudent question: ${message}`;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
     });
 
-    return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response right now. Please try again.";
+    return response.text || "I'm sorry, I couldn't generate a response right now. Please try again.";
   } catch (error) {
     console.error('AI chat error:', error);
     return "I'm having trouble connecting to my AI service right now. Please try again in a moment.";
@@ -522,24 +512,39 @@ async function extractTopicsWithAI(text: string, documentId: string) {
   try {
     console.log('Analyzing document with AI...');
     
-    // Use OpenAI to extract topics and create summaries
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are an educational AI assistant. Analyze the provided text and extract 4-8 main topics. For each topic, provide a clear title and a 2-3 sentence summary. Format your response as JSON with this structure: {\"topics\": [{\"title\": \"Topic Title\", \"summary\": \"Brief summary\"}]}"
+    // Use Gemini to extract topics and create summaries
+    const prompt = `You are an educational AI assistant. Analyze the provided text and extract 4-8 main topics. For each topic, provide a clear title and a 2-3 sentence summary. Format your response as JSON with this structure: {"topics": [{"title": "Topic Title", "summary": "Brief summary"}]}
+
+Please analyze this educational content and extract the main topics:
+
+${text.substring(0, 4000)}`;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-pro",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            topics: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  summary: { type: "string" }
+                },
+                required: ["title", "summary"]
+              }
+            }
+          },
+          required: ["topics"]
         },
-        {
-          role: "user",
-          content: `Please analyze this educational content and extract the main topics:\n\n${text.substring(0, 4000)}`
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 1000
+      },
+      contents: prompt,
     });
 
-    const aiResponse = response.choices[0]?.message?.content;
+    const aiResponse = response.text;
     if (!aiResponse) {
       throw new Error('No response from AI');
     }
@@ -600,23 +605,43 @@ function extractTitle(text: string): string {
 // AI-powered question generation
 async function generateQuestionsWithAI(topicId: string, title: string, summary: string) {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system", 
-          content: "Generate 2 educational questions about a topic. Format as JSON: {\"questions\": [{\"type\": \"MCQ\", \"question\": \"question text\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correctAnswer\": \"A\", \"explanation\": \"why this is correct\"}, {\"type\": \"Short\", \"question\": \"question text\", \"explanation\": \"sample answer\"}]}"
+    const prompt = `Generate 2 educational questions about a topic. Format as JSON: {"questions": [{"type": "MCQ", "question": "question text", "options": ["A", "B", "C", "D"], "correctAnswer": "A", "explanation": "why this is correct"}, {"type": "Short", "question": "question text", "explanation": "sample answer"}]}
+
+Topic: ${title}
+Summary: ${summary}`;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-pro",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            questions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string" },
+                  question: { type: "string" },
+                  options: { 
+                    type: "array",
+                    items: { type: "string" }
+                  },
+                  correctAnswer: { type: "string" },
+                  explanation: { type: "string" }
+                },
+                required: ["type", "question", "explanation"]
+              }
+            }
+          },
+          required: ["questions"]
         },
-        {
-          role: "user",
-          content: `Topic: ${title}\nSummary: ${summary}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 800
+      },
+      contents: prompt,
     });
 
-    const aiResponse = response.choices[0]?.message?.content;
+    const aiResponse = response.text;
     if (aiResponse) {
       const parsedResponse = JSON.parse(aiResponse);
       const questions = parsedResponse.questions || [];
