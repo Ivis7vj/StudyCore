@@ -64,7 +64,10 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <div className="studycore-card p-6 animate-slide-in-right">
-            <h3 className="font-orbitron text-lg text-neon-cyan mb-4 text-glow-pulse">QUICK ACCESS</h3>
+            <h3 className="font-orbitron text-lg text-neon-cyan mb-6 text-glow-pulse flex items-center">
+              <Trophy className="w-5 h-5 mr-2" />
+              QUICK ACCESS
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleHistoryClick}

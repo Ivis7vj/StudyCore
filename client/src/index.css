@@ -170,6 +170,46 @@
     text-shadow: none;
   }
   
+  /* Professional Components */
+  .studycore-card {
+    @apply bg-card border border-border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-300;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .studycore-card:hover {
+    @apply shadow-xl;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+    border-color: hsla(var(--primary) / 0.3);
+  }
+
+  .studycore-button {
+    @apply font-orbitron font-semibold uppercase tracking-wide transition-all duration-300 rounded-lg;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 4px 16px rgba(0, 255, 255, 0.2);
+  }
+
+  .studycore-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 255, 255, 0.3);
+  }
+
+  .studycore-button:active {
+    transform: translateY(0);
+  }
+
+  .professional-header {
+    @apply backdrop-blur-xl border-b;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(8, 8, 8, 0.98) 100%);
+    border-bottom-color: rgba(0, 255, 255, 0.1);
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
   /* PDF drop zone */
   .pdf-drop-zone {
     border: 2px dashed hsla(180, 100%, 50%, 0.5);
