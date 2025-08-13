@@ -60,7 +60,7 @@ Preferred communication style: Simple, everyday language.
 
 **PDF Processing**: Server-side PDF text extraction using pdf-parse library with fallback OCR capabilities mentioned for image-heavy documents.
 
-**OpenAI Integration**: Prepared infrastructure for AI-powered features like topic extraction, question generation, and chat functionality (API integration endpoints configured but implementation varies by feature).
+**OpenAI Integration**: Fully implemented AI-powered features using GPT-4o for topic extraction, question generation, and chat functionality. Features include graceful error handling for quota limits and helpful user messaging when API credits are needed.
 
 **Development Tools**: 
 - Vite for fast development and building

@@ -428,6 +428,7 @@ async function generateAIResponse(message: string, documentId?: string): Promise
       }
     }
 
+    // Check if OpenAI is available and has quota
     const systemMessage = `You are an educational AI assistant helping students understand their study materials. Be helpful, accurate, and encouraging. If provided with document context, reference it in your responses.${contextText ? `\n\nDocument context: ${contextText}` : ''}`;
 
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -444,7 +445,13 @@ async function generateAIResponse(message: string, documentId?: string): Promise
     return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response right now. Please try again.";
   } catch (error) {
     console.error('AI chat error:', error);
-    return "I'm having trouble connecting to my AI service right now. Please try again in a moment.";
+    
+    // If quota exceeded, provide helpful response instead of generic error
+    if (error.code === 'insufficient_quota') {
+      return "Hi! I'm your study assistant. Unfortunately, my AI features are temporarily unavailable due to API quota limits. To enable full AI capabilities including personalized help with your study materials, please add credits to your OpenAI account at https://platform.openai.com/account/billing. In the meantime, you can still upload PDFs, browse videos, and use interactive simulations!";
+    }
+    
+    return "I'm having trouble connecting to my AI service right now. Please add credits to your OpenAI account or try again later.";
   }
 }
 
