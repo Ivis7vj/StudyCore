@@ -27,26 +27,26 @@ export default function VoiceChat({ onClose, documentId }: VoiceChatProps) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     // Initialize speech recognition
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
       recognitionRef.current.lang = 'en-US';
 
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInputText(transcript);
         handleSendMessage(transcript);
       };
 
-      recognitionRef.current.onerror = (event) => {
+      recognitionRef.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
         toast({
@@ -67,8 +67,12 @@ export default function VoiceChat({ onClose, documentId }: VoiceChatProps) {
     }
 
     return () => {
+      // Cleanup on unmount
       if (recognitionRef.current) {
         recognitionRef.current.stop();
+      }
+      if (synthRef.current) {
+        synthRef.current.cancel();
       }
     };
   }, []);
@@ -91,6 +95,25 @@ export default function VoiceChat({ onClose, documentId }: VoiceChatProps) {
       recognitionRef.current.stop();
     }
     setIsRecording(false);
+  };
+
+  const handleClose = () => {
+    // Stop any ongoing speech recognition
+    if (recognitionRef.current && isRecording) {
+      recognitionRef.current.stop();
+    }
+    
+    // Stop any ongoing speech synthesis
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
+    
+    // Reset states
+    setIsRecording(false);
+    setIsLoading(false);
+    
+    // Call parent close handler
+    onClose();
   };
 
   const handleSendMessage = async (message: string) => {
@@ -155,7 +178,7 @@ export default function VoiceChat({ onClose, documentId }: VoiceChatProps) {
         <div className="flex justify-between items-center p-4 border-b border-neon-cyan">
           <h3 className="font-orbitron text-lg text-neon-cyan">VOICE Q&A ASSISTANT</h3>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-foreground hover:text-neon-cyan transition-colors"
             data-testid="button-close-voice-chat"
           >
