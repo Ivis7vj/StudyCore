@@ -169,6 +169,38 @@
     animation: none;
     text-shadow: none;
   }
+
+  /* StudyCore Brand Glow Effect */
+  .studycore-glow {
+    text-shadow: 
+      0 0 5px hsl(var(--neon-cyan)),
+      0 0 10px hsl(var(--neon-cyan)),
+      0 0 15px hsl(var(--neon-cyan)),
+      0 0 20px hsl(var(--neon-cyan));
+    animation: studycore-pulse 3s ease-in-out infinite alternate;
+  }
+
+  @keyframes studycore-pulse {
+    from { 
+      text-shadow: 
+        0 0 5px hsl(var(--neon-cyan)),
+        0 0 10px hsl(var(--neon-cyan)),
+        0 0 15px hsl(var(--neon-cyan)),
+        0 0 20px hsl(var(--neon-cyan));
+    }
+    to { 
+      text-shadow: 
+        0 0 8px hsl(var(--neon-cyan)),
+        0 0 16px hsl(var(--neon-cyan)),
+        0 0 24px hsl(var(--neon-cyan)),
+        0 0 32px hsl(var(--neon-cyan));
+    }
+  }
+
+  .light .studycore-glow {
+    animation: none;
+    text-shadow: none;
+  }
   
   /* Professional Components */
   .studycore-card {

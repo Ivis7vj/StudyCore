@@ -16,7 +16,7 @@ export default function Header() {
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center animate-slide-in-left">
             <Link href="/">
-              <h1 className="font-orbitron text-3xl font-bold gradient-text cursor-pointer hover:scale-105 transition-transform duration-300">
+              <h1 className="font-orbitron text-3xl font-bold gradient-text studycore-glow cursor-pointer hover:scale-105 transition-transform duration-300">
                 STUDYCORE
               </h1>
             </Link>

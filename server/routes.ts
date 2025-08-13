@@ -471,37 +471,63 @@ async function extractTopicsSimple(text: string, documentId: string) {
 // Background PDF processing function
 async function processPDF(documentId: string, filePath: string) {
   try {
+    console.log(`Starting PDF processing for document ${documentId} at path: ${filePath}`);
     await storage.updateDocumentStatus(documentId, 'analyzing');
+
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.error(`File not found at path: ${filePath}`);
+      throw new Error(`File not found: ${filePath}`);
+    }
 
     // Extract text from PDF using pdf-parse
     const dataBuffer = fs.readFileSync(filePath);
     const pdfParse = await import('pdf-parse');
-    const pdfData = await pdfParse.default(dataBuffer);
+    
+    // Configure pdf-parse options for better performance
+    const options = {
+      max: 0 // No page limit - process all pages
+    };
+    
+    const pdfData = await pdfParse.default(dataBuffer, options);
     const extractedText = pdfData.text;
 
-    console.log(`Extracted ${extractedText.length} characters from PDF`);
+    console.log(`Successfully extracted ${extractedText.length} characters from PDF`);
 
     if (!extractedText.trim()) {
-      throw new Error('No text could be extracted from PDF');
+      throw new Error('No text could be extracted from PDF - document may be image-based or corrupted');
     }
 
     // Update document with extracted text
-    const document = await storage.getDocument(documentId);
-    if (document) {
-      document.extractedText = extractedText;
-    }
+    await storage.updateDocumentText(documentId, extractedText);
 
     // Use AI to extract topics and generate study materials
+    console.log('Starting AI topic extraction...');
     const topics = await extractTopicsWithAI(extractedText, documentId);
+    console.log(`Generated ${topics.length} topics from document`);
     
     await storage.updateDocumentStatus(documentId, 'ready', topics.length);
 
     // Clean up uploaded file
-    fs.unlinkSync(filePath);
+    try {
+      fs.unlinkSync(filePath);
+      console.log(`Cleaned up temporary file: ${filePath}`);
+    } catch (cleanupError) {
+      console.warn(`Failed to clean up file ${filePath}:`, cleanupError);
+    }
     
   } catch (error) {
     console.error('PDF processing error:', error);
     await storage.updateDocumentStatus(documentId, 'error');
+    
+    // Try to clean up file even on error
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (cleanupError) {
+      console.warn(`Failed to clean up file on error:`, cleanupError);
+    }
   }
 }
 

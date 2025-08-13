@@ -16,6 +16,7 @@ export interface IStorage {
   createDocument(document: InsertDocument): Promise<Document>;
   getDocument(id: string): Promise<Document | undefined>;
   updateDocumentStatus(id: string, status: string, topicCount?: number): Promise<void>;
+  updateDocumentText(id: string, extractedText: string): Promise<void>;
   getAllDocuments(): Promise<DocumentWithTopics[]>;
   
   // Topics
@@ -83,6 +84,13 @@ export class MemStorage implements IStorage {
         document.topicCount = topicCount;
       }
       this.documents.set(id, document);
+    }
+  }
+
+  async updateDocumentText(id: string, extractedText: string): Promise<void> {
+    const document = this.documents.get(id);
+    if (document) {
+      document.extractedText = extractedText;
     }
   }
 
