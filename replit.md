@@ -2,7 +2,7 @@
 
 ## Overview
 
-StudyCore is a comprehensive student study companion web application that combines AI-powered document analysis with interactive educational resources. The app processes PDF documents to extract study topics, generates quiz questions, integrates YouTube videos for visual learning, and provides access to PhET simulations for hands-on practice. Built with a modern tech stack, it features a futuristic dark/light theme interface designed for optimal study experiences.
+StudyCore is a comprehensive AI-powered study companion web application that helps students analyze PDF documents and generate interactive learning resources. The application extracts topics from uploaded documents, creates quizzes, finds relevant YouTube videos, and matches educational simulations to enhance the learning experience. Built with a modern tech stack, it features a futuristic dark/light theme interface with sharp, angular design elements and neon accent colors.
 
 ## User Preferences
 
@@ -12,63 +12,75 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**React SPA with TypeScript**: The client is built as a single-page application using React 18+ with TypeScript for type safety. The application uses Wouter for lightweight routing instead of React Router.
+**React SPA with TypeScript**: Single-page application built with React 18+ and TypeScript for type safety. Uses Wouter for lightweight client-side routing instead of React Router, providing efficient navigation between dashboard, topics, history, and simulation pages.
 
-**Component Structure**: Follows a modular component architecture with:
-- UI components built with Radix UI primitives and shadcn/ui design system
-- Custom StudyCore-branded components for consistent theming
-- Separation of concerns between layout, pages, and feature-specific components
+**Component Design System**: Built on shadcn/ui components with Radix UI primitives for accessibility. Features a custom StudyCore design system with:
+- Sharp, angular components (no rounded corners)
+- Neon cyan/blue accent colors for dark mode
+- Orbitron font for headings, Poppins for body text
+- Hover effects with subtle neon glow animations
+- Dark/light theme toggle with CSS custom properties
 
-**State Management**: Uses TanStack Query (React Query) for server state management, providing caching, background updates, and optimistic updates. No global client state management library is used, keeping state local to components.
+**State Management**: TanStack Query (React Query) handles all server state management, providing automatic caching, background refetching, and optimistic updates. No global client state management library is used, keeping the architecture simple and focused.
 
-**Styling Solution**: Tailwind CSS with custom CSS variables for theme management. Supports dynamic dark/light mode switching with custom StudyCore branding (neon cyan accents, Orbitron/Poppins fonts, sharp geometric design).
+**Styling Solution**: Tailwind CSS with custom CSS variables for theme management. Supports dynamic theme switching between rich black (default) and pure white modes. Custom animations include fade-in, slide-in, and pulse-glow effects.
 
 ### Backend Architecture
 
-**Express.js REST API**: Node.js backend with Express.js serving RESTful endpoints. Uses TypeScript for type safety across the full stack with shared schema definitions.
-
-**File Upload Handling**: Multer middleware for PDF file uploads with validation and size limits. Uploaded files are processed server-side for text extraction.
+**Express.js REST API**: Node.js backend serving RESTful endpoints with TypeScript throughout. Uses middleware for file upload handling, request logging, and error handling.
 
 **Document Processing Pipeline**: 
+- Multer middleware for PDF file uploads with validation (50MB limit, PDF-only)
 - PDF text extraction using pdf-parse library
-- AI-powered topic extraction and question generation
-- Integration with YouTube API for relevant video discovery
-- PhET simulation matching based on topic keywords
+- AI-powered content analysis using Google Gemini API
+- Topic extraction with page range identification
+- Automatic quiz question generation (MCQ and short answer)
+- YouTube video discovery via YouTube Data API
+- PhET simulation matching based on keyword analysis
+
+**AI Integration**: Google Gemini AI integration for intelligent content analysis, topic extraction, and question generation. Processes extracted PDF text to identify key learning concepts and create educational resources.
 
 ### Data Storage Solutions
 
-**PostgreSQL with Drizzle ORM**: Uses PostgreSQL as the primary database with Drizzle ORM for type-safe database operations. Schema includes:
-- Documents table for uploaded PDFs and processing status
-- Topics table for extracted study topics with summaries
-- Questions table for generated quiz questions (MCQ and short answer)
-- YouTube videos and PhET simulations linked to topics
-- User progress tracking and chat sessions
+**PostgreSQL with Drizzle ORM**: Uses PostgreSQL as the primary database with Drizzle ORM for type-safe database operations. Configured for Neon Database serverless PostgreSQL with connection pooling.
 
-**Neon Database Integration**: Configured for Neon serverless PostgreSQL with connection pooling via @neondatabase/serverless.
+**Database Schema**:
+- `documents` table: PDF metadata, processing status, extracted text
+- `topics` table: Extracted topics with summaries, page ranges, real-world examples
+- `questions` table: Generated quiz questions with options and explanations
+- `youtube_videos` table: Curated video resources linked to topics
+- `phet_simulations` table: Educational simulations matched to topics
+- `chat_sessions` table: Conversation history for Q&A features
+- `user_progress` table: Learning progress tracking
+
+**File Storage**: Local file system storage for uploaded PDFs with automatic cleanup. Uses unique filename generation to prevent conflicts.
 
 ### Authentication and Authorization
 
-**Session-based Authentication**: Uses connect-pg-simple for PostgreSQL session storage. Sessions are managed server-side with secure cookie configuration.
+**Session-Based**: Simple session management without complex authentication flows. Designed for individual study use rather than multi-user scenarios.
 
-**No Complex Auth System**: Currently implements basic session management without OAuth or complex user management systems, keeping the focus on study features.
+## External Dependencies
 
-### External Dependencies
+### AI and Content APIs
 
-**YouTube Data API v3**: Integrated for searching and embedding educational videos related to study topics. Uses API key authentication for accessing YouTube's search and video metadata.
+**Google Gemini AI**: Primary AI service for content analysis, topic extraction, and question generation. Requires `GEMINI_API_KEY` environment variable.
 
-**PhET Interactive Simulations**: Client-side integration with University of Colorado's PhET simulations. Pre-configured simulation library with keyword matching to automatically suggest relevant simulations for physics, chemistry, and math topics.
+**YouTube Data API v3**: Integrated for finding relevant educational videos based on extracted topics. Uses API key `AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU` for video search and metadata retrieval.
 
-**PDF Processing**: Server-side PDF text extraction using pdf-parse library with fallback OCR capabilities mentioned for image-heavy documents.
+### Educational Resources
 
-**AIML API Integration**: Fully implemented AI-powered features using AIML API for topic extraction, question generation, and chat functionality. Features include graceful error handling for API permissions and helpful user messaging when key authorization is needed.
+**PhET Interactive Simulations**: Curated collection of physics, chemistry, math, and biology simulations from University of Colorado Boulder. Matches simulations to topics using keyword analysis.
 
-**Development Tools**: 
-- Vite for fast development and building
-- Replit-specific plugins for development environment integration
-- ESBuild for production server bundling
+### Database and Infrastructure
 
-**UI Framework Dependencies**:
-- Radix UI for accessible component primitives
-- Class Variance Authority for component variant management
-- Tailwind CSS for utility-first styling
-- Lucide React for consistent iconography
+**Neon Database**: Serverless PostgreSQL hosting with connection pooling via `@neondatabase/serverless`. Requires `DATABASE_URL` environment variable.
+
+**Drizzle Kit**: Database schema management and migrations. Configuration points to PostgreSQL dialect with schema in `./shared/schema.ts`.
+
+### Development and Build Tools
+
+**Vite**: Frontend build tool with React plugin, TypeScript support, and hot module replacement. Configured with path aliases and custom runtime error handling.
+
+**ESBuild**: Server-side bundling for production builds. Compiles TypeScript server code to ESM format.
+
+**Replit Integration**: Development environment integration with cartographer plugin and runtime error modal for enhanced debugging experience.
