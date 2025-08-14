@@ -5,7 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { insertDocumentSchema, insertTopicSchema, insertQuestionSchema, insertYoutubeVideoSchema, insertPhetSimulationSchema } from "@shared/schema";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
 // Extend Request interface for multer
 interface MulterRequest extends Request {
@@ -30,11 +30,8 @@ const upload = multer({
 // API configurations
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyAohc04nVSHJctgkJ5L0TTw7E8bkx6yyDU";
 
-// Initialize AIML API (using OpenAI-compatible interface)
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'https://api.aimlapi.com/v1'
-});
+// Initialize Gemini AI
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 // PhET simulations data - Complete collection
 const PHET_SIMULATIONS = [
@@ -416,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// AI-powered chat response generation
+// AI-powered chat response generation using Gemini
 async function generateAIResponse(message: string, documentId?: string): Promise<string> {
   try {
     let contextText = '';
@@ -429,34 +426,29 @@ async function generateAIResponse(message: string, documentId?: string): Promise
       }
     }
 
-    // Check if OpenAI is available and has quota
     const systemMessage = `You are an educational AI assistant helping students understand their study materials. Be helpful, accurate, and encouraging. If provided with document context, reference it in your responses.${contextText ? `\n\nDocument context: ${contextText}` : ''}`;
 
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemMessage },
-        { role: "user", content: message }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
+    const prompt = `${systemMessage}\n\nUser question: ${message}`;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response right now. Please try again.";
-  } catch (error) {
+    return response.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response right now. Please try again.";
+  } catch (error: any) {
     console.error('AI chat error:', error);
     
     // Handle different API error types
-    if (error.code === 'insufficient_quota') {
-      return "Hi! I'm your study assistant. Unfortunately, my AI features are temporarily unavailable due to API quota limits. To enable full AI capabilities including personalized help with your study materials, please add credits to your AIML account at https://aimlapi.com. In the meantime, you can still upload PDFs, browse videos, and use interactive simulations!";
+    if (error.status === 429) {
+      return "Hi! I'm your study assistant. Unfortunately, my AI features are temporarily unavailable due to API rate limits. Please try again in a moment. In the meantime, you can still upload PDFs, browse videos, and use interactive simulations!";
     }
     
-    if (error.status === 403) {
-      return "Hi! I'm your study assistant. The AIML API key needs to be authorized or has insufficient permissions. Please check your AIML API key at https://aimlapi.com/dashboard and ensure it has the proper permissions. You can still upload PDFs, browse videos, and use interactive simulations!";
+    if (error.status === 403 || error.status === 401) {
+      return "Hi! I'm your study assistant. The Gemini API key needs to be configured or has insufficient permissions. Please check your Gemini API key in your Google Cloud Console. You can still upload PDFs, browse videos, and use interactive simulations!";
     }
     
-    return "I'm having trouble connecting to my AI service right now. Please check your AIML API key or try again later.";
+    return "I'm having trouble connecting to my AI service right now. Please check your Gemini API key or try again later.";
   }
 }
 
@@ -565,12 +557,12 @@ async function processPDF(documentId: string, filePath: string) {
   }
 }
 
-// AI-powered topic extraction using OpenAI
+// AI-powered topic extraction using Gemini
 async function extractTopicsWithAI(text: string, documentId: string) {
   const topics = [];
   
   try {
-    console.log('Analyzing document with OpenAI...');
+    console.log('Analyzing document with Gemini AI...');
     
     // Use more text for better analysis, limit for performance
     const analysisText = text.substring(0, 8000);
@@ -581,22 +573,24 @@ Please analyze this educational content and extract the main topics:
 
 ${analysisText}`;
 
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 1000
+    const response = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    const aiResponse = response.choices[0]?.message?.content;
+    const aiResponse = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    
     if (!aiResponse) {
       throw new Error('No response from AI');
     }
 
     console.log('AI Analysis Response:', aiResponse);
     
-    const parsedResponse = JSON.parse(aiResponse);
+    // Extract JSON from response (Gemini might include additional text)
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : aiResponse;
+    
+    const parsedResponse = JSON.parse(jsonStr);
     const extractedTopics = parsedResponse.topics || [];
 
     for (let i = 0; i < extractedTopics.length; i++) {
@@ -645,7 +639,7 @@ function extractTitle(text: string): string {
   return "Topic " + (Math.floor(Math.random() * 100) + 1);
 }
 
-// AI-powered question generation
+// AI-powered question generation using Gemini
 async function generateQuestionsWithAI(topicId: string, title: string, summary: string) {
   try {
     const prompt = `Generate 2 educational questions about a topic. Format as JSON: {"questions": [{"type": "MCQ", "question": "question text", "options": ["A", "B", "C", "D"], "correctAnswer": "A", "explanation": "why this is correct"}, {"type": "Short", "question": "question text", "explanation": "sample answer"}]}
@@ -653,17 +647,19 @@ async function generateQuestionsWithAI(topicId: string, title: string, summary: 
 Topic: ${title}
 Summary: ${summary}`;
 
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 800
+    const response = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    const aiResponse = response.choices[0]?.message?.content;
+    const aiResponse = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    
     if (aiResponse) {
-      const parsedResponse = JSON.parse(aiResponse);
+      // Extract JSON from response (Gemini might include additional text)
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : aiResponse;
+      
+      const parsedResponse = JSON.parse(jsonStr);
       const questions = parsedResponse.questions || [];
       
       for (let i = 0; i < questions.length; i++) {
@@ -773,17 +769,19 @@ async function generateDailyChallengeWithAI() {
 
 Create an interesting and educational ${subject} question that tests understanding of key concepts.`;
 
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 600
+    const response = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    const aiResponse = response.choices[0]?.message?.content;
+    const aiResponse = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    
     if (aiResponse) {
-      const parsedResponse = JSON.parse(aiResponse);
+      // Extract JSON from response (Gemini might include additional text)
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : aiResponse;
+      
+      const parsedResponse = JSON.parse(jsonStr);
       
       return {
         id: Date.now().toString(),
