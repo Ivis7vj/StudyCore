@@ -1,0 +1,23 @@
+# API Keys Configuration
+# This file documents the API keys used in this project
+
+## Gemini AI API Key
+Environment Variable: GEMINI_API_KEY
+Purpose: Used for AI-powered features including:
+- Chat responses and educational assistance
+- Document topic extraction and analysis
+- Question generation for study materials
+- Daily challenge creation
+
+Service: Google AI Studio (Gemini API)
+Website: https://aistudio.google.com/
+Model Used: gemini-1.5-flash
+
+## Other API Keys
+YouTube API Key: YOUTUBE_API_KEY
+Purpose: Search and retrieve educational videos related to study topics
+
+## Notes
+- All API keys are stored as environment variables in Replit Secrets
+- The application has been migrated from OpenAI to Gemini AI as of current date
+- Gemini API provides text generation capabilities for educational content
